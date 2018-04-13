@@ -6,7 +6,7 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/cockroachdb/roachprod/vm"
+	"github.com/scaledata/roachprod/vm"
 	"github.com/pkg/errors"
 )
 

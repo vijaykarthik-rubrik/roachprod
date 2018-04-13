@@ -14,8 +14,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cockroachdb/roachprod/install"
-	"github.com/cockroachdb/roachprod/ssh"
+	"github.com/scaledata/roachprod/install"
+	"github.com/scaledata/roachprod/ssh"
 )
 
 var duration time.Duration

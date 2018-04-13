@@ -9,7 +9,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/cockroachdb/roachprod/ssh"
+	"github.com/scaledata/roachprod/ssh"
 )
 
 type Cassandra struct{}

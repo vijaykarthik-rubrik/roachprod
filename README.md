@@ -12,7 +12,7 @@ installations (`gcloud components update`).
 To build and install into `$GOPATH/bin`:
 
 ```
-$ go get -u github.com/cockroachdb/roachprod
+$ go get -u github.com/scaledata/roachprod
 ```
 
 ## Summary

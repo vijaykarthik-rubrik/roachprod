@@ -11,8 +11,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/cockroachdb/roachprod/config"
-	"github.com/cockroachdb/roachprod/ssh"
+	"github.com/scaledata/roachprod/config"
+	"github.com/scaledata/roachprod/ssh"
 	"github.com/hashicorp/go-version"
 	"github.com/pkg/errors"
 )
@@ -49,7 +49,7 @@ func cockroachNodeBinary(c *SyncedCluster, i int) string {
 		if gopath == "" {
 			return config.Binary
 		}
-		path = gopath + "/src/github.com/cockroachdb/cockroach/" + config.Binary
+		path = gopath + "/src/github.com/scaledata/cockroach/" + config.Binary
 		var err2 error
 		path, err2 = exec.LookPath(path)
 		if err2 != nil {
