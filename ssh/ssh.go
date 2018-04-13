@@ -99,7 +99,7 @@ func getDefaultSSHKeySigners(haveAgent bool) []ssh.Signer {
 func newSSHClient(user, host string) (*ssh.Client, net.Conn, error) {
 	config := &ssh.ClientConfig{
 		User:            user,
-		Auth:            []ssh.AuthMethod{ssh.PublicKeys(sshState.signers...)},
+		Auth:            []ssh.AuthMethod{ssh.Password("qwerty")},
 		HostKeyCallback: getKnownHosts(),
 	}
 	config.SetDefaults()
