@@ -12,8 +12,8 @@ import (
 )
 
 type httpClient struct {
-	auth    string
-	client  http.Client
+	auth   string
+	client http.Client
 }
 
 func (c *httpClient) get(url *url.URL) (map[string]interface{}, error) {

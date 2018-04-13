@@ -8,7 +8,9 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"time"
 
+	"github.com/cockroachdb/roachprod/vm"
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
 )
@@ -16,15 +18,16 @@ import (
 const (
 	bodegaConfPathTemplate  = "${HOME}/.bodega.conf.yml"
 	bodegaOrderPathTemplate = "${HOME}/.roachprod/bodega_orders"
-	urlScheme  	            = "https"
+	urlScheme               = "https"
 	urlHost                 = "bodega.rubrik-lab.com"
 	urlPathOrders           = "api/orders/"
+	urlPathOrderUpdates     = "api/order_updates/"
 	urlPathProfile          = "api/profile/"
 )
 
 type bodegaManager struct {
-	bodegaOrderPath  string
-	client           httpClient
+	bodegaOrderPath string
+	client          httpClient
 }
 
 func newBodegaManager() (*bodegaManager, error) {
@@ -52,8 +55,8 @@ func readBodegaToken() (string, error) {
 	}
 
 	type bodegaConfig struct {
-		URL    string
-		Token  string
+		URL   string
+		Token string
 	}
 
 	var conf bodegaConfig
@@ -76,9 +79,9 @@ func (m *bodegaManager) postDataToPath(
 	}
 
 	u := &url.URL{
-		Scheme:   urlScheme,
-		Host:     urlHost,
-		Path:     path,
+		Scheme: urlScheme,
+		Host:   urlHost,
+		Path:   path,
 	}
 	return m.client.post(u, dataBytes)
 }
@@ -88,9 +91,9 @@ func (m *bodegaManager) placeOrder(names []string, opts providerOpts) (string, e
 	machine := map[string]interface{}{
 		"type": "ubuntu_machine",
 		"requirements": map[string]interface{}{
-			"disk_size":  opts.DiskSize,
-			"location":   opts.Location,
-			"model":      opts.Model,
+			"disk_size": opts.DiskSize,
+			"location":  opts.Location,
+			"model":     opts.Model,
 		},
 	}
 	items := make(map[string]interface{})
@@ -104,7 +107,7 @@ func (m *bodegaManager) placeOrder(names []string, opts providerOpts) (string, e
 	}
 	itemsString := string(itemsBytes)
 
-	order := map[string]interface{} { "items": itemsString }
+	order := map[string]interface{}{"items": itemsString}
 	result, err := m.postDataToPath(urlPathOrders, order)
 	if err != nil {
 		return "", err
@@ -117,12 +120,36 @@ func (m *bodegaManager) placeOrder(names []string, opts providerOpts) (string, e
 	return orderID.(string), nil
 }
 
-// getOrder gets order information from Bodega
-func (m *bodegaManager) getOrder(orderID string) (map[string]interface{}, error) {
+func (m *bodegaManager) closeOrder(orderID string) error {
+	data := map[string]interface{}{
+		"order_sid":  orderID,
+		"new_status": "CLOSED",
+		"comment":    "This order is closed by roachprod.",
+	}
+	_, err := m.postDataToPath(urlPathOrderUpdates, data)
+	return err
+}
+
+func (m *bodegaManager) extendOrder(orderID string, timeDelta time.Duration) error {
+	comment := fmt.Sprintf(
+		"This order is extended by roachprod.\nIt has been extended for %s",
+		timeDelta,
+	)
+	data := map[string]interface{}{
+		"order_sid":        orderID,
+		"time_limit_delta": convert(timeDelta),
+		"comment":          comment,
+	}
+	_, err := m.postDataToPath(urlPathOrderUpdates, data)
+	return err
+}
+
+// consumeOrder consumes order information from Bodega
+func (m *bodegaManager) consumeOrder(orderID string) (map[string]interface{}, error) {
 	u := &url.URL{
-		Scheme:   urlScheme,
-		Host:     urlHost,
-		Path:     urlPathOrders + orderID,
+		Scheme: urlScheme,
+		Host:   urlHost,
+		Path:   urlPathOrders + orderID,
 	}
 
 	return m.client.get(u)
@@ -142,7 +169,7 @@ func (m *bodegaManager) listOrders() (map[string]interface{}, error) {
 		Scheme:   urlScheme,
 		Host:     urlHost,
 		Path:     urlPathOrders,
-		RawQuery:  v.Encode(),
+		RawQuery: v.Encode(),
 	}
 
 	return m.client.get(u)
@@ -151,9 +178,9 @@ func (m *bodegaManager) listOrders() (map[string]interface{}, error) {
 // ownerSid returns current user's sid
 func (m *bodegaManager) ownerSid() (string, error) {
 	u := &url.URL{
-		Scheme:   urlScheme,
-		Host:     urlHost,
-		Path:     urlPathProfile,
+		Scheme: urlScheme,
+		Host:   urlHost,
+		Path:   urlPathProfile,
 	}
 
 	result, err := m.client.get(u)
@@ -169,17 +196,8 @@ func (m *bodegaManager) ownerSid() (string, error) {
 	return sidString, nil
 }
 
-func inSlice(s string, slice []string) bool {
-	for _, elem := range slice {
-		if s == elem {
-			return true
-		}
-	}
-	return false
-}
-
 func (m *bodegaManager) fulfilled(orderID string) bool {
-	order, err := m.getOrder(orderID)
+	order, err := m.consumeOrder(orderID)
 	if err != nil {
 		return false
 	}
@@ -190,9 +208,27 @@ func (m *bodegaManager) fulfilled(orderID string) bool {
 	return false
 }
 
+// orderIDOfVMs returns the orderID of given machines. It assumes that all machines
+// are from the same order and returns the orderID of the first machine.
+func (m *bodegaManager) orderIDOfVMs(vms vm.List) (string, error) {
+	if len(vms) == 0 {
+		return "", fmt.Errorf("no machine provided")
+	}
+	orderMap, err := m.orderToMachineMap()
+	if err != nil {
+		return "", errors.Wrapf(err, "unable to get order to machine map")
+	}
+
+	for orderID, machines := range orderMap {
+		if inSlice(vms[0].Name, machines) {
+			return orderID, nil
+		}
+	}
+	return "", fmt.Errorf("unable to find orderID for machines: %v", vms.Names())
+}
 
 // liveOrderIDs returns orderIDs of "Open" and "Fulfilled" orders of current user
-func (m *bodegaManager) liveOrderIDs()([]string, error) {
+func (m *bodegaManager) liveOrderIDs() ([]string, error) {
 	orders, err := m.listOrders()
 	if err != nil {
 		return nil, errors.Wrapf(err, "unable to list orders")

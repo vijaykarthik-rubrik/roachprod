@@ -79,11 +79,42 @@ func (p *Provider) Create(names []string, opts vm.CreateOpts) error {
 
 // Delete is part of the vm.Provider interface.
 func (p *Provider) Delete(vms vm.List) error {
+	orderID, err := p.manager.orderIDOfVMs(vms)
+	if err != nil {
+		return err
+	}
+
+	if err := p.manager.closeOrder(orderID); err != nil {
+		return errors.Wrapf(err, "unable to close order %s", orderID)
+	}
 	return nil
 }
 
 // Extend is part of the vm.Provider interface.
 func (p *Provider) Extend(vms vm.List, lifetime time.Duration) error {
+	orderID, err := p.manager.orderIDOfVMs(vms)
+	if err != nil {
+		return err
+	}
+
+	order, err := p.manager.consumeOrder(orderID)
+	if err != nil {
+		return errors.Wrapf(err, "unable to consume order %s", orderID)
+	}
+
+	createTime, err := time.Parse(time.RFC3339, order["time_created"].(string))
+	if err != nil {
+		return errors.Wrapf(err, "unable to parse %s", order["time_created"].(string))
+	}
+	ejectionTime, err := time.Parse(time.RFC3339, order["ejection_time"].(string))
+	if err != nil {
+		return errors.Wrapf(err, "unable to parse %s", order["ejection_time"].(string))
+	}
+	oldLifetime := ejectionTime.Sub(createTime)
+
+	if err := p.manager.extendOrder(orderID, lifetime-oldLifetime); err != nil {
+		return errors.Wrapf(err, "unable to extend order %s", orderID)
+	}
 	return nil
 }
 
@@ -106,10 +137,21 @@ func (p *Provider) List() (vm.List, error) {
 
 	var allMachines vm.List
 	for orderID := range orderMap {
-		order, err := p.manager.getOrder(orderID)
+		order, err := p.manager.consumeOrder(orderID)
 		if err != nil {
 			return nil, errors.Wrapf(err, "unable to consume order %s", orderID)
 		}
+
+		createTime, err := time.Parse(time.RFC3339, order["time_created"].(string))
+		if err != nil {
+			return nil, errors.Wrapf(err, "unable to parse %s", order["time_created"].(string))
+		}
+		ejectionTime, err := time.Parse(time.RFC3339, order["ejection_time"].(string))
+		if err != nil {
+			return nil, errors.Wrapf(err, "unable to parse %s", order["ejection_time"].(string))
+		}
+		lifetime := ejectionTime.Sub(createTime)
+
 		machines := order["fulfilled_items"].(map[string]interface{})
 		for name, spec := range machines {
 			newMachine := new(vm.VM)
@@ -118,11 +160,8 @@ func (p *Provider) List() (vm.List, error) {
 			newMachine.ProviderID = ProviderName
 
 			specMap := spec.(map[string]interface{})
-			createTime, err := time.Parse(time.RFC3339, specMap["time_created"].(string))
-			if err != nil {
-				return nil, errors.Wrapf(err, "unable to parse time string")
-			}
 			newMachine.CreatedAt = createTime
+			newMachine.Lifetime = lifetime
 			newMachine.PublicIP = specMap["ipv4"].(string)
 			newMachine.RemoteUser = specMap["username"].(string)
 			newMachine.Zone = specMap["location"].(string)
