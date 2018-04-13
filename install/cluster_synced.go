@@ -17,9 +17,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/scaledata/roachprod/config"
-	"github.com/scaledata/roachprod/ssh"
-	"github.com/scaledata/roachprod/ui"
+	"github.com/cockroachdb/roachprod/config"
+	"github.com/cockroachdb/roachprod/ssh"
+	"github.com/cockroachdb/roachprod/ui"
 
 	"github.com/pkg/errors"
 )

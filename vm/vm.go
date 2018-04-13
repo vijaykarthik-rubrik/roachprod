@@ -6,7 +6,7 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/scaledata/roachprod/config"
+	"github.com/cockroachdb/roachprod/config"
 	"github.com/pkg/errors"
 	"github.com/spf13/pflag"
 	"golang.org/x/sync/errgroup"

@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/scaledata/roachprod/vm"
+	"github.com/cockroachdb/roachprod/vm"
 	"github.com/pkg/errors"
 	"github.com/spf13/pflag"
 	"golang.org/x/sync/errgroup"

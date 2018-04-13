@@ -10,9 +10,9 @@ import (
 	"strings"
 	"text/tabwriter"
 
-	"github.com/scaledata/roachprod/cloud"
-	"github.com/scaledata/roachprod/config"
-	"github.com/scaledata/roachprod/install"
+	"github.com/cockroachdb/roachprod/cloud"
+	"github.com/cockroachdb/roachprod/config"
+	"github.com/cockroachdb/roachprod/install"
 	"github.com/pkg/errors"
 )
 

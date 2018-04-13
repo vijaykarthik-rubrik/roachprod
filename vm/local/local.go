@@ -7,9 +7,9 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/scaledata/roachprod/config"
-	"github.com/scaledata/roachprod/install"
-	"github.com/scaledata/roachprod/vm"
+	"github.com/cockroachdb/roachprod/config"
+	"github.com/cockroachdb/roachprod/install"
+	"github.com/cockroachdb/roachprod/vm"
 	"github.com/pkg/errors"
 	"github.com/spf13/pflag"
 )
