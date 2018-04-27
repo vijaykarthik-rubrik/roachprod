@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -euf -o pipefail
+
 echo "GOPATH=$GOPATH"
 COCKROACH_BUILDER=$GOPATH/src/github.com/cockroachdb/cockroach/build/builder.sh
 if [ -f $COCKROACH_BUILDER ]; then
