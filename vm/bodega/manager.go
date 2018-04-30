@@ -254,7 +254,7 @@ func (m *bodegaManager) orderToMachineMap() (map[string][]string, error) {
 		return nil, err
 	}
 
-	var orderMap map[string][]string
+	orderMap := make(map[string][]string)
 	file, err := os.Open(m.bodegaOrderPath)
 	if err != nil {
 		if os.IsNotExist(err) {
