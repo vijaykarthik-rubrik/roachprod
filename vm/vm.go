@@ -47,7 +47,7 @@ var (
 	ErrNoExpiration = errors.New("could not determine expiration")
 )
 
-var regionRE = regexp.MustCompile(`(.*[^-])-?[a-z]$`)
+var regionRE = regexp.MustCompile(`(.*[^-])-?[a-z0-9]$`)
 
 // IsLocal returns true if the VM represents the local host.
 func (vm *VM) IsLocal() bool {
