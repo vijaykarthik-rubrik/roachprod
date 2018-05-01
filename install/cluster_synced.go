@@ -159,7 +159,7 @@ func (c *SyncedCluster) Wipe() {
 		} else {
 			cmd = `find /mnt/data* -maxdepth 1 -type f -exec rm -f {} \; ;
 rm -fr /mnt/data*/{auxiliary,local,tmp,cassandra,cockroach,cockroach-temp*,mongo-data} \; ;
-rm -fr certs* ;
+rm -fr certs* ; rm -fr /home/ubuntu/data ;
 `
 		}
 		return session.CombinedOutput(cmd)
@@ -355,44 +355,45 @@ func (c *SyncedCluster) Run(stdout, stderr io.Writer, nodes []int, title, cmd st
 }
 
 func (c *SyncedCluster) Wait() error {
-	display := fmt.Sprintf("%s: waiting for nodes to start", c.Name)
-	errs := make([]error, len(c.Nodes))
-	c.Parallel(display, len(c.Nodes), 0, func(i int) ([]byte, error) {
-		for j := 0; j < 600; j++ {
-			session, err := c.newSession(c.Nodes[i])
-			if err != nil {
-				time.Sleep(500 * time.Millisecond)
-				continue
-			}
-			defer session.Close()
-
-			// Wait for the startup scripts to complete.
-			out, err := session.CombinedOutput("systemctl show google-startup-scripts -p ActiveState")
-			if err != nil {
-				errs[i] = err
-				return nil, nil
-			}
-			if strings.TrimSpace(string(out)) == "ActiveState=activating" {
-				time.Sleep(500 * time.Millisecond)
-				continue
-			}
-			return nil, nil
-		}
-		errs[i] = errors.New("timed out after 5m")
-		return nil, nil
-	})
-
-	var foundErr bool
-	for i, err := range errs {
-		if err != nil {
-			fmt.Printf("  %2d: %v\n", c.Nodes[i], err)
-			foundErr = true
-		}
-	}
-	if foundErr {
-		return errors.New("not all nodes booted successfully")
-	}
 	return nil
+	//display := fmt.Sprintf("%s: waiting for nodes to start", c.Name)
+	//errs := make([]error, len(c.Nodes))
+	//c.Parallel(display, len(c.Nodes), 0, func(i int) ([]byte, error) {
+	//	for j := 0; j < 600; j++ {
+	//		session, err := c.newSession(c.Nodes[i])
+	//		if err != nil {
+	//			time.Sleep(500 * time.Millisecond)
+	//			continue
+	//		}
+	//		defer session.Close()
+	//
+	//		// Wait for the startup scripts to complete.
+	//		out, err := session.CombinedOutput("systemctl show google-startup-scripts -p ActiveState")
+	//		if err != nil {
+	//			errs[i] = err
+	//			return nil, nil
+	//		}
+	//		if strings.TrimSpace(string(out)) == "ActiveState=activating" {
+	//			time.Sleep(500 * time.Millisecond)
+	//			continue
+	//		}
+	//		return nil, nil
+	//	}
+	//	errs[i] = errors.New("timed out after 5m")
+	//	return nil, nil
+	//})
+	//
+	//var foundErr bool
+	//for i, err := range errs {
+	//	if err != nil {
+	//		fmt.Printf("  %2d: %v\n", c.Nodes[i], err)
+	//		foundErr = true
+	//	}
+	//}
+	//if foundErr {
+	//	return errors.New("not all nodes booted successfully")
+	//}
+	//return nil
 }
 
 func (c *SyncedCluster) CockroachVersions() map[string]int {
@@ -867,7 +868,7 @@ func (c *SyncedCluster) Ssh(sshArgs, args []string) error {
 func (c *SyncedCluster) scp(src, dest string) error {
 	args := []string{
 		"scp", "-r", "-C",
-		"-i", filepath.Join(config.OSUser.HomeDir, ".ssh", "google_compute_engine"),
+		"-i", "/home/ubuntu/workspace/sdmain/deployment/ssh_keys/ubuntu.pem",
 		"-o", "StrictHostKeyChecking=no",
 		src, dest,
 	}
